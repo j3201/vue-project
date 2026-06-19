@@ -162,30 +162,86 @@ const downloadAll = async () => {
 </script>
 
 <style scoped>
-/* 全局背景 */
+/* 页面容器：工作台画布 - 顶部暖光→底部冷灰 */
 .page {
-  background: #1a2035;
+  background:
+    radial-gradient(ellipse at 30% -10%, #fbfbf9 0%, transparent 55%),
+    radial-gradient(ellipse at 100% 100%, #d8dee9 0%, transparent 55%),
+    linear-gradient(180deg, #f5f6f8 0%, #e5e7eb 100%);
+  background-color: #eef1f5;
   min-height: 100vh;
-  padding: 30px 20px;
+  padding: 24px 20px;
+  box-shadow:
+    inset 8px 0 16px -12px rgba(15, 23, 42, 0.25),
+    inset 0 8px 16px -12px rgba(15, 23, 42, 0.15);
 }
 
-/* 上传区域 */
+/* 上传区域：白底卡片 + 顶部渐变色条 */
 .upload-box {
-  text-align: center;
-  margin-bottom: 30px;
-  color: #fff;
+  max-width: 760px;
+  margin: 0 auto 24px;
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  padding: 20px;
+  color: #0f172a;
+  position: relative;
+  box-shadow: 0 1px 0 rgba(30, 41, 59, 0.02), 0 2px 8px rgba(30, 41, 59, 0.04);
 }
 
-.upload-box input,
-.upload-box button {
-  padding: 10px 16px;
-  margin: 0 6px;
-  border-radius: 8px;
-  border: none;
-  background: #4080ff;
-  color: #fff;
-  font-size: 15px;
+.upload-box::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #2563eb 0%, #0891b2 100%);
+  border-radius: 8px 8px 0 0;
+}
+
+.upload-box input[type="file"] {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 13px;
+  font-family: inherit;
   cursor: pointer;
+  transition: border-color 120ms linear, background 120ms linear;
+}
+
+.upload-box input[type="file"]:hover {
+  border-color: #2563eb;
+  background: #ffffff;
+}
+
+.upload-box button {
+  padding: 8px 14px;
+  margin: 0 6px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+  letter-spacing: 0.2px;
+  transition: background 120ms linear, border-color 120ms linear;
+}
+
+.upload-box button:hover:not(:disabled) {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.upload-box button:disabled {
+  background: #94a3b8;
+  border-color: #94a3b8;
+  color: #f1f5f9;
+  cursor: not-allowed;
 }
 
 /* 样式切换器 */
@@ -195,40 +251,46 @@ const downloadAll = async () => {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .switcher-label {
-  color: #99a3b4;
-  font-size: 14px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
   margin-right: 8px;
 }
 
 .style-btn {
   padding: 6px 14px;
   border-radius: 6px;
-  border: 1px solid #5a6178;
-  background: transparent;
-  color: #99a3b4;
-  font-size: 13px;
+  border: 1px solid #93c5fd;
+  background: #ffffff;
+  color: #1e40af;
+  font-size: 12px;
+  font-family: inherit;
   cursor: pointer;
-  transition: all 0.3s ease;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  transition: background 120ms linear, border-color 120ms linear, color 120ms linear;
 }
 
 .style-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: #7a8198;
-  color: #fff;
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
 }
 
 .style-btn.active {
-  background: #4080ff;
-  border-color: #4080ff;
-  color: #fff;
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
 }
 
-/* 卡片容器 */
+/* 卡片容器（仅改容器，不改内部卡片样式） */
 .card-list {
-  max-width: 680px;
+  max-width: 760px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;

@@ -1,39 +1,37 @@
 <template>
-  <div class="pdf-page">
-    <div class="card">
-      <div class="card-header">
-        <h2 class="title">📄 PDF 工具</h2>
-        <p class="subtitle">普通合并 | 两页拼一页（带合理间距）</p>
+  <div class="page-container">
+    <div class="panel">
+      <div class="panel-head">
+        <h2 class="panel-title">PDF 工具</h2>
+        <p class="panel-subtitle">普通合并 · 两页拼一页</p>
       </div>
 
-      <div class="card-body">
-        <div class="tab-group">
-          <button 
-            class="tab" 
-            :class="{ active: activeTab === 'merge' }" 
+      <div class="panel-body">
+        <div class="tab-group" role="tablist">
+          <button
+            class="tab"
+            :class="{ active: activeTab === 'merge' }"
             @click="switchTab('merge')"
+            role="tab"
           >
-            <span class="tab-icon">📑</span>
             <span>普通合并</span>
           </button>
-          <button 
-            class="tab" 
-            :class="{ active: activeTab === 'twoInOne' }" 
+          <button
+            class="tab"
+            :class="{ active: activeTab === 'twoInOne' }"
             @click="switchTab('twoInOne')"
+            role="tab"
           >
-            <span class="tab-icon">📋</span>
             <span>两页拼一页</span>
           </button>
         </div>
 
-        <div class="panel" v-if="activeTab === 'merge'">
-          <div class="action-buttons">
+        <div class="section" v-if="activeTab === 'merge'">
+          <div class="btn-group">
             <button class="btn btn-secondary" @click="selectMergeFiles">
-              <span class="btn-icon">📁</span>
-              <span>选择多个PDF</span>
+              <span>选择多个 PDF</span>
             </button>
             <button class="btn btn-primary" @click="startMerge">
-              <span class="btn-icon">🔗</span>
               <span>开始合并</span>
             </button>
           </div>
@@ -43,14 +41,12 @@
           </div>
         </div>
 
-        <div class="panel" v-if="activeTab === 'twoInOne'">
-          <div class="action-buttons">
+        <div class="section" v-if="activeTab === 'twoInOne'">
+          <div class="btn-group">
             <button class="btn btn-secondary" @click="selectMergeFiles">
-              <span class="btn-icon">📄</span>
-              <span>选择PDF</span>
+              <span>选择 PDF</span>
             </button>
             <button class="btn btn-primary" @click="startTwoInOne">
-              <span class="btn-icon">✨</span>
               <span>开始拼页</span>
             </button>
           </div>
@@ -60,10 +56,8 @@
           </div>
         </div>
 
-        <div class="log-section" v-if="log">
-          <div class="log" :class="{ success: log.includes('✅'), error: log.includes('❌') }">
-            {{ log }}
-          </div>
+        <div class="status-section" v-if="log">
+          <div class="log" :class="{ success: log.includes('成功') }">{{ log }}</div>
         </div>
       </div>
     </div>
@@ -90,52 +84,52 @@ function selectMergeFiles() {
   i.type = 'file'
   i.accept = 'application/pdf'
   i.multiple = true
-  i.onchange = e => {
+  i.onchange = (e) => {
     selectedFiles.value = Array.from(e.target.files)
-    log.value = `✅ 已选择 ${selectedFiles.value.length} 个文件`
+    log.value = `已选择 ${selectedFiles.value.length} 个文件`
   }
   i.click()
 }
 
 async function startMerge() {
   if (selectedFiles.value.length === 0) {
-    log.value = '⚠️ 请先选择文件'
+    log.value = '请先选择文件'
     return
   }
-  log.value = '🔄 合并中...'
+  log.value = '合并中…'
   try {
     const doc = await PDFDocument.create()
     for (const f of selectedFiles.value) {
       const d = await PDFDocument.load(await f.arrayBuffer())
       const pages = await doc.copyPages(d, d.getPageIndices())
-      pages.forEach(p => doc.addPage(p))
+      pages.forEach((p) => doc.addPage(p))
     }
     saveAs(new Blob([await doc.save()]), '合并完成.pdf')
-    log.value = '✅ 合并成功'
+    log.value = '合并成功'
   } catch (e) {
-    log.value = '❌ 合并失败'
+    log.value = '合并失败'
     console.error(e)
   }
 }
 
 async function startTwoInOne() {
   if (selectedFiles.value.length === 0) {
-    log.value = '⚠️ 请先选择文件'
+    log.value = '请先选择文件'
     return
   }
   try {
-    log.value = '🔄 处理中...'
+    log.value = '处理中…'
 
     const tempDoc = await PDFDocument.create()
     for (const f of selectedFiles.value) {
       const bytes = await f.arrayBuffer()
       const pdf = await PDFDocument.load(bytes)
       const pages = await tempDoc.copyPages(pdf, pdf.getPageIndices())
-      pages.forEach(p => tempDoc.addPage(p))
+      pages.forEach((p) => tempDoc.addPage(p))
     }
 
     const totalPages = tempDoc.getPageCount()
-    log.value = `📊 已读取 ${totalPages} 页，正在拼接...`
+    log.value = `已读取 ${totalPages} 页，正在拼接…`
 
     const outDoc = await PDFDocument.create()
 
@@ -169,182 +163,143 @@ async function startTwoInOne() {
 
     const pdfBytes = await outDoc.save()
     saveAs(new Blob([pdfBytes]), '两页拼一页.pdf')
-    log.value = '✅ 拼页成功！'
+    log.value = '拼页成功'
   } catch (e) {
-    log.value = '❌ 失败：' + e.message
+    log.value = '失败：' + e.message
     console.error(e)
   }
 }
 </script>
 
 <style scoped>
-.pdf-page {
+.page-container {
   width: 100%;
-  min-height: calc(100vh - 64px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
+  max-width: 640px;
+  margin: 0 auto;
 }
 
-.card {
-  width: 100%;
-  max-width: 600px;
-  background: rgba(255, 255, 255, 0.98);
-  border-radius: 24px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.5);
+.panel {
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
   overflow: hidden;
-  backdrop-filter: blur(10px);
-  animation: slideUp 0.5s ease;
+  position: relative;
+  box-shadow: 0 1px 0 rgba(30, 41, 59, 0.02), 0 2px 8px rgba(30, 41, 59, 0.04);
 }
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.panel::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #2563eb 0%, #0891b2 100%);
 }
 
-.card-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 40px 32px 32px;
-  color: white;
+.panel-head {
+  padding: 20px 24px 18px;
+  border-bottom: 1px solid #eff6ff;
+  position: relative;
 }
 
-.title {
-  font-size: 28px;
-  font-weight: 700;
-  margin: 0 0 8px 0;
-  letter-spacing: 0.5px;
+.panel-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+  line-height: 1.4;
+  letter-spacing: 0.2px;
 }
 
-.subtitle {
-  font-size: 14px;
-  opacity: 0.9;
+.panel-subtitle {
+  font-size: 13px;
+  color: #64748b;
   margin: 0;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
-.card-body {
-  padding: 32px;
+.panel-body {
+  padding: 24px;
 }
 
 .tab-group {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 28px;
+  gap: 8px;
+  margin-bottom: 20px;
 }
 
 .tab {
-  padding: 16px 20px;
-  border-radius: 14px;
+  padding: 12px 16px;
+  border-radius: 6px;
   cursor: pointer;
-  background: #f7fafc;
-  border: 2px solid #e2e8f0;
-  color: #4a5568;
-  font-size: 15px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 14px;
   font-weight: 600;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  font-family: inherit;
+  transition: background 120ms linear, border-color 120ms linear, color 120ms linear;
 }
 
 .tab:hover {
-  border-color: #667eea;
-  background: rgba(102, 126, 234, 0.05);
-  transform: translateY(-2px);
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #0f172a;
 }
 
 .tab.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-color: transparent;
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
 }
 
-.tab-icon {
-  font-size: 20px;
-}
-
-.panel {
+.section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
-.action-buttons {
+.btn-group {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
 }
 
 .btn {
-  padding: 16px 24px;
-  border-radius: 12px;
-  font-size: 16px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 14px;
   font-weight: 600;
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
-  transform: translate(-50%, -50%);
-  transition: width 0.6s, height 0.6s;
-}
-
-.btn:active::before {
-  width: 300px;
-  height: 300px;
-}
-
-.btn-icon {
-  font-size: 20px;
+  font-family: inherit;
+  letter-spacing: 0.2px;
+  transition: background 120ms linear, border-color 120ms linear, color 120ms linear;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+  background: #1d4ed8;
+  border-color: #1d4ed8;
 }
 
 .btn-secondary {
-  background: white;
-  color: #4a5568;
-  border: 2px solid #e2e8f0;
+  background: #ffffff;
+  color: #1e40af;
+  border-color: #93c5fd;
 }
 
 .btn-secondary:hover {
-  border-color: #667eea;
-  color: #667eea;
-  background: rgba(102, 126, 234, 0.05);
-  transform: translateY(-2px);
+  background: #eff6ff;
+  border-color: #2563eb;
 }
 
 .file-count {
@@ -352,12 +307,13 @@ async function startTwoInOne() {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 14px;
-  background: rgba(102, 126, 234, 0.08);
-  border-radius: 12px;
-  font-size: 15px;
-  color: #4a5568;
-  font-weight: 500;
+  padding: 12px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #334155;
+  font-weight: 600;
+  border: 1px dashed #cbd5e1;
 }
 
 .count-badge {
@@ -365,62 +321,45 @@ async function startTwoInOne() {
   align-items: center;
   justify-content: center;
   min-width: 32px;
-  height: 32px;
+  height: 24px;
   padding: 0 10px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 99px;
+  background: #0891b2;
+  color: #ffffff;
+  border-radius: 4px;
   font-weight: 700;
-  font-size: 16px;
+  font-size: 13px;
 }
 
-.log-section {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 2px solid #f7fafc;
+.status-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
 }
 
 .log {
-  padding: 14px 18px;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 500;
-  background: #f7fafc;
-  color: #4a5568;
-  border-left: 4px solid #cbd5e0;
-  transition: all 0.3s ease;
+  padding: 12px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  background: #eff6ff;
+  color: #1e3a8a;
+  border-left: 3px solid #2563eb;
 }
 
 .log.success {
-  background: rgba(72, 187, 120, 0.1);
-  color: #22543d;
-  border-left-color: #48bb78;
-}
-
-.log.error {
-  background: rgba(245, 101, 101, 0.1);
-  color: #742a2a;
-  border-left-color: #f56565;
+  background: #ecfdf5;
+  color: #065f46;
+  border-left-color: #10b981;
 }
 
 @media (max-width: 640px) {
-  .card-header {
-    padding: 32px 24px 24px;
+  .panel-head {
+    padding: 16px 20px 14px;
   }
-  
-  .title {
-    font-size: 22px;
+  .panel-body {
+    padding: 20px;
   }
-  
-  .card-body {
-    padding: 24px;
-  }
-  
-  .tab-group {
-    grid-template-columns: 1fr;
-  }
-  
-  .action-buttons {
+  .btn-group {
     grid-template-columns: 1fr;
   }
 }

@@ -1,105 +1,73 @@
 <template>
-  <div class="random-page">
-    <div class="card">
-      <div class="card-header">
-        <div class="header-icon">🎲</div>
-        <h2 class="title">数字随机组合计算</h2>
-        <p class="subtitle">智能寻找最接近目标值的数字组合</p>
+  <div class="page-container">
+    <div class="panel">
+      <div class="panel-head">
+        <h2 class="panel-title">数字随机组合计算</h2>
+        <p class="panel-subtitle">智能寻找最接近目标值的数字组合</p>
       </div>
 
-      <div class="card-body">
+      <div class="panel-body">
         <div class="form-section">
           <div class="input-group">
             <div class="input-item">
-              <label class="input-label">
-                <span class="label-icon">🎯</span>
-                <span>目标数值</span>
-              </label>
-              <input 
-                v-model.number="target" 
-                type="number" 
-                placeholder="请输入目标数字" 
-                class="styled-input"
-              />
+              <label class="label">目标数值</label>
+              <input v-model.number="target" type="number" placeholder="请输入目标数字" />
             </div>
-            
+
             <div class="input-item">
-              <label class="input-label">
-                <span class="label-icon">🔢</span>
-                <span>数字数组</span>
-              </label>
-              <input 
-                v-model="arrStr" 
-                placeholder="示例：1, 2, 5, 5, 3, 7" 
-                class="styled-input"
-              />
-              <span class="input-hint">使用英文逗号分隔多个数字</span>
+              <label class="label">数字数组</label>
+              <input v-model="arrStr" placeholder="示例：1, 2, 5, 5, 3, 7" />
+              <span class="hint">使用英文逗号分隔多个数字</span>
             </div>
           </div>
         </div>
 
-        <div class="action-buttons">
+        <div class="btn-group">
           <button @click="calculate" class="btn btn-primary" :disabled="loading">
-            <span class="btn-icon">{{ loading ? '⚙️' : '🚀' }}</span>
-            <span>{{ loading ? '计算中...' : '开始计算' }}</span>
+            <span>{{ loading ? '计算中…' : '开始计算' }}</span>
           </button>
           <button @click="reset" class="btn btn-secondary">
-            <span class="btn-icon">🔄</span>
             <span>重置</span>
           </button>
         </div>
 
-        <div class="results-container" v-if="resultAbove || resultBelow">
-          <div class="result-card result-above" v-if="resultAbove">
+        <div class="results" v-if="resultAbove || resultBelow">
+          <div class="result-card" v-if="resultAbove">
             <div class="result-header">
-              <div class="result-badge above">
-                <span class="badge-icon">⬆️</span>
-                <span class="badge-text">大于目标</span>
-              </div>
-              <div class="result-diff positive">+{{ resultAbove.diff }}</div>
+              <span class="badge above">大于目标</span>
+              <span class="diff">+{{ resultAbove.diff }}</span>
             </div>
-            
-            <div class="result-content">
-              <div class="result-row">
-                <span class="row-label">组合</span>
-                <span class="row-value combination">{{ resultAbove.combination }}</span>
-              </div>
-              <div class="result-row">
-                <span class="row-label">总和</span>
-                <span class="row-value sum">{{ resultAbove.sum }}</span>
-              </div>
+            <div class="result-row">
+              <span class="row-label">组合</span>
+              <span class="row-value">{{ resultAbove.combination }}</span>
+            </div>
+            <div class="result-row">
+              <span class="row-label">总和</span>
+              <span class="row-value">{{ resultAbove.sum }}</span>
             </div>
           </div>
 
-          <div class="result-card result-below" v-if="resultBelow">
+          <div class="result-card" v-if="resultBelow">
             <div class="result-header">
-              <div class="result-badge below">
-                <span class="badge-icon">⬇️</span>
-                <span class="badge-text">小于目标</span>
-              </div>
-              <div class="result-diff negative">-{{ resultBelow.diff }}</div>
+              <span class="badge below">小于目标</span>
+              <span class="diff">-{{ resultBelow.diff }}</span>
             </div>
-            
-            <div class="result-content">
-              <div class="result-row">
-                <span class="row-label">组合</span>
-                <span class="row-value combination">{{ resultBelow.combination }}</span>
-              </div>
-              <div class="result-row">
-                <span class="row-label">总和</span>
-                <span class="row-value sum">{{ resultBelow.sum }}</span>
-              </div>
+            <div class="result-row">
+              <span class="row-label">组合</span>
+              <span class="row-value">{{ resultBelow.combination }}</span>
+            </div>
+            <div class="result-row">
+              <span class="row-label">总和</span>
+              <span class="row-value">{{ resultBelow.sum }}</span>
             </div>
           </div>
         </div>
 
-        <div class="empty-state" v-else>
-          <div class="empty-icon">💡</div>
-          <p class="empty-text">输入目标值和数字数组，点击开始计算</p>
-          <p class="empty-hint">系统将自动找出最接近的两个组合</p>
+        <div class="empty" v-else>
+            <p>输入目标值和数字数组，点击开始计算</p>
+          </div>
         </div>
       </div>
-    </div>
   </div>
 </template>
 
@@ -124,7 +92,7 @@ const calculate = () => {
   const numArr = arrStr.value
     .split(',')
     .map(Number)
-    .filter(n => !isNaN(n) && n > 0)
+    .filter((n) => !isNaN(n) && n > 0)
 
   if (numArr.length === 0) {
     alert('请输入合法的数字数组')
@@ -146,7 +114,7 @@ const calculate = () => {
 
   for (let mask = 1; mask < 1 << len; mask++) {
     let currentSum = 0
-    let currentList = []
+    const currentList = []
     for (let i = 0; i < len; i++) {
       if (mask & (1 << i)) {
         currentSum += numArr[i]
@@ -190,444 +158,252 @@ const calculate = () => {
 </script>
 
 <style scoped>
-.random-page {
+.page-container {
   width: 100%;
-  min-height: calc(100vh - 64px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.panel {
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 1px 0 rgba(30, 41, 59, 0.02), 0 2px 8px rgba(30, 41, 59, 0.04);
+}
+
+.panel::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #f97316 0%, #2563eb 100%);
+}
+
+.panel-head {
+  padding: 20px 24px 18px;
+  border-bottom: 1px solid #eff6ff;
+  position: relative;
+}
+
+.panel-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+  line-height: 1.4;
+  letter-spacing: 0.2px;
+}
+
+.panel-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.panel-body {
   padding: 24px;
 }
 
-.card {
-  width: 100%;
-  max-width: 800px;
-  background: rgba(255, 255, 255, 0.98);
-  border-radius: 24px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.5);
-  overflow: hidden;
-  backdrop-filter: blur(10px);
-  animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.card-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 40px 32px 36px;
-  color: white;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.card-header::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-  animation: pulse 4s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 0.5; }
-  50% { transform: scale(1.1); opacity: 0.8; }
-}
-
-.header-icon {
-  font-size: 64px;
-  margin-bottom: 16px;
-  animation: bounce 2s ease-in-out infinite;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
-}
-
-@keyframes bounce {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-10px) rotate(10deg); }
-}
-
-.title {
-  font-size: 28px;
-  font-weight: 700;
-  margin: 0 0 8px 0;
-  letter-spacing: 0.5px;
-  position: relative;
-  z-index: 1;
-}
-
-.subtitle {
-  font-size: 15px;
-  opacity: 0.95;
-  margin: 0;
-  line-height: 1.6;
-  position: relative;
-  z-index: 1;
-}
-
-.card-body {
-  padding: 36px 32px;
-}
-
 .form-section {
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 
 .input-group {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .input-item {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-
-.input-label {
-  display: flex;
-  align-items: center;
   gap: 8px;
-  font-size: 14px;
-  color: #2d3748;
+}
+
+.label {
+  font-size: 13px;
+  color: #334155;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.2px;
 }
 
-.label-icon {
-  font-size: 18px;
-}
-
-.styled-input {
-  padding: 16px 18px;
-  border-radius: 14px;
-  border: 2px solid #e2e8f0;
-  background: #f7fafc;
-  color: #2d3748;
-  font-size: 16px;
+.input-item input {
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 14px;
   outline: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  font-weight: 500;
+  font-family: inherit;
+  transition: border-color 120ms linear, box-shadow 120ms linear;
 }
 
-.styled-input:focus {
-  border-color: #667eea;
-  background: white;
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-  transform: translateY(-2px);
+.input-item input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
-.styled-input::placeholder {
-  color: #a0aec0;
-}
-
-.input-hint {
+.hint {
   font-size: 12px;
-  color: #a0aec0;
-  margin-top: 4px;
-  font-style: italic;
+  color: #64748b;
+  margin-top: 2px;
 }
 
-.action-buttons {
+.btn-group {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
-  margin-bottom: 32px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
 }
 
 .btn {
-  padding: 16px 24px;
-  border-radius: 14px;
-  font-size: 16px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 14px;
   font-weight: 600;
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
-  transform: translate(-50%, -50%);
-  transition: width 0.6s, height 0.6s;
-}
-
-.btn:active::before {
-  width: 300px;
-  height: 300px;
+  font-family: inherit;
+  letter-spacing: 0.2px;
+  transition: background 120ms linear, border-color 120ms linear, color 120ms linear;
 }
 
 .btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
-  transform: none !important;
-}
-
-.btn-icon {
-  font-size: 20px;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+  background: #f97316;
+  color: #ffffff;
+  border-color: #f97316;
 }
 
 .btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+  background: #ea580c;
+  border-color: #ea580c;
 }
 
 .btn-secondary {
-  background: white;
-  color: #4a5568;
-  border: 2px solid #e2e8f0;
+  background: #ffffff;
+  color: #1e40af;
+  border-color: #93c5fd;
 }
 
-.btn-secondary:hover {
-  border-color: #667eea;
-  color: #667eea;
-  background: rgba(102, 126, 234, 0.05);
-  transform: translateY(-2px);
+.btn-secondary:hover:not(:disabled) {
+  background: #eff6ff;
+  border-color: #2563eb;
 }
 
-.results-container {
+.results {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  animation: fadeIn 0.5s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  gap: 12px;
 }
 
 .result-card {
-  background: white;
-  border-radius: 18px;
-  padding: 24px;
-  border: 2px solid #e2e8f0;
-  transition: all 0.3s ease;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 18px 20px;
   position: relative;
-  overflow: hidden;
 }
 
-.result-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-  transition: width 0.3s ease;
+.result-card:nth-child(1) {
+  border-left: 4px solid #10b981;
 }
 
-.result-above::before {
-  background: linear-gradient(180deg, #48bb78 0%, #38a169 100%);
-}
-
-.result-below::before {
-  background: linear-gradient(180deg, #ed8936 0%, #dd6b20 100%);
-}
-
-.result-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
-}
-
-.result-card:hover::before {
-  width: 6px;
+.result-card:nth-child(2) {
+  border-left: 4px solid #f97316;
 }
 
 .result-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid #f7fafc;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed #e2e8f0;
 }
 
-.result-badge {
+.badge {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 99px;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.result-badge.above {
-  background: rgba(72, 187, 120, 0.1);
-  color: #22543d;
-}
-
-.result-badge.below {
-  background: rgba(237, 137, 54, 0.1);
-  color: #7c2d12;
-}
-
-.badge-icon {
-  font-size: 16px;
-}
-
-.result-diff {
-  font-size: 24px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
   font-weight: 700;
-  padding: 8px 16px;
-  border-radius: 12px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  background: #e2e8f0;
+  color: #334155;
 }
 
-.result-diff.positive {
-  background: rgba(72, 187, 120, 0.15);
-  color: #22543d;
+.badge.above {
+  background: #d1fae5;
+  color: #065f46;
 }
 
-.result-diff.negative {
-  background: rgba(237, 137, 54, 0.15);
-  color: #7c2d12;
+.below {
+  background: #ffedd5;
+  color: #9a3412;
 }
 
-.result-content {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+.diff {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
 }
 
 .result-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  background: #f7fafc;
-  border-radius: 12px;
-  transition: all 0.2s ease;
-}
-
-.result-row:hover {
-  background: #edf2f7;
-  transform: translateX(4px);
+  padding: 6px 0;
 }
 
 .row-label {
-  font-size: 14px;
-  color: #718096;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
 }
 
 .row-value {
-  font-size: 16px;
-  font-weight: 600;
-  color: #2d3748;
-}
-
-.row-value.combination {
-  color: #667eea;
-  font-family: 'Courier New', monospace;
-  letter-spacing: 0.5px;
-}
-
-.row-value.sum {
-  font-size: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  animation: fadeIn 0.5s ease;
-}
-
-.empty-icon {
-  font-size: 72px;
-  margin-bottom: 20px;
-  opacity: 0.6;
-  animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-12px); }
-}
-
-.empty-text {
-  font-size: 18px;
-  color: #4a5568;
-  font-weight: 600;
-  margin: 0 0 8px 0;
-}
-
-.empty-hint {
   font-size: 14px;
-  color: #a0aec0;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.empty {
+  text-align: center;
+  padding: 32px 16px 8px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.empty p {
   margin: 0;
 }
 
 @media (max-width: 640px) {
-  .random-page {
-    padding: 16px;
+  .panel-head {
+    padding: 16px 20px 14px;
   }
-  
-  .card-header {
-    padding: 32px 24px 28px;
+  .panel-body {
+    padding: 20px;
   }
-  
-  .header-icon {
-    font-size: 48px;
-  }
-  
-  .title {
-    font-size: 22px;
-  }
-  
-  .card-body {
-    padding: 28px 24px;
-  }
-  
-  .action-buttons {
+  .btn-group {
     grid-template-columns: 1fr;
-  }
-  
-  .result-header {
-    flex-direction: column;
-    gap: 12px;
-    align-items: flex-start;
-  }
-  
-  .result-diff {
-    align-self: flex-end;
   }
 }
 </style>
