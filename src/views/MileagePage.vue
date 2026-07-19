@@ -577,21 +577,35 @@ const rematchAll = () => {
   showStatus(matchedCount === total ? 'success' : 'error', msg)
 }
 
+const getColValue = (row: Record<string, any>, keywords: string[]): any => {
+  const keys = Object.keys(row)
+  for (const kw of keywords) {
+    const exactKey = keys.find(k => k.trim() === kw)
+    if (exactKey !== undefined) return row[exactKey]
+  }
+  for (const kw of keywords) {
+    const fuzzyKey = keys.find(k => k.trim().includes(kw))
+    if (fuzzyKey !== undefined) return row[fuzzyKey]
+  }
+  return ''
+}
+
 const parseExcel = (file: File): Promise<Record<string, any>[]> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = (ev) => {
       try {
-        const wb = XLSX.read(ev.target?.result, { type: 'binary', cellDates: false })
+        const data = new Uint8Array(ev.target?.result as ArrayBuffer)
+        const wb = XLSX.read(data, { type: 'array', cellDates: false })
         const ws = wb.Sheets[wb.SheetNames[0]]
-        const data = XLSX.utils.sheet_to_json(ws) as Record<string, any>[]
-        resolve(data)
+        const json = XLSX.utils.sheet_to_json(ws, { defval: '' }) as Record<string, any>[]
+        resolve(json)
       } catch (e) {
         reject(e)
       }
     }
     reader.onerror = () => reject(new Error('读取失败'))
-    reader.readAsBinaryString(file)
+    reader.readAsArrayBuffer(file)
   })
 }
 
@@ -601,28 +615,41 @@ const handleRouteImport = async (e: Event) => {
   if (!file) return
   try {
     const data = await parseExcel(file)
+    if (data.length === 0) {
+      showStatus('error', 'Excel文件为空或无法解析')
+      target.value = ''
+      return
+    }
     const parsed: RouteEntry[] = []
     for (const row of data) {
-      const start = String(row['起点'] ?? row['start'] ?? '').trim()
-      const end = String(row['终点'] ?? row['end'] ?? '').trim()
-      const dist = row['导航里程'] ?? row['导航里'] ?? row['distance'] ?? ''
-      if (start && end) {
-        parsed.push({ start, end, distance: dist })
+      const start = String(getColValue(row, ['起点', 'start', '出发地', '起始点'])).trim()
+      const end = String(getColValue(row, ['终点', 'end', '目的地', '到达点'])).trim()
+      const distRaw = getColValue(row, ['导航里程', '导航里', 'distance', '里程', '距离', 'km'])
+      const dist = distRaw === '' || distRaw === null || distRaw === undefined ? '' : Number(distRaw)
+      if (start && end && !isNaN(Number(dist)) && Number(dist) > 0) {
+        parsed.push({ start, end, distance: Number(dist) })
       }
     }
     const existing = new Set(routeCache.value.map(r => r.start.trim() + '→' + r.end.trim()))
+    const existingReverse = new Set(routeCache.value.map(r => r.end.trim() + '→' + r.start.trim()))
     let added = 0
     for (const r of parsed) {
       const key = r.start + '→' + r.end
-      if (!existing.has(key)) {
+      const revKey = r.end + '→' + r.start
+      if (!existing.has(key) && !existingReverse.has(revKey)) {
         routeCache.value.push(r)
         existing.add(key)
         added++
       }
     }
-    showStatus('success', `路线库导入成功，新增 ${added} 条路线`)
-  } catch {
-    showStatus('error', '导入失败，请检查文件格式')
+    if (parsed.length === 0) {
+      showStatus('error', '未识别到有效的路线数据，请确保Excel包含「起点」「终点」「导航里程」列')
+    } else {
+      cacheExpanded.value = true
+      showStatus(added > 0 ? 'success' : 'error', `路线库导入完成：识别 ${parsed.length} 条，新增 ${added} 条${added === 0 ? '（均已存在）' : ''}`)
+    }
+  } catch (err: any) {
+    showStatus('error', '导入失败：' + (err?.message || '请检查文件格式'))
   }
   target.value = ''
 }
@@ -633,30 +660,57 @@ const handleTripImport = async (e: Event) => {
   if (!file) return
   try {
     const data = await parseExcel(file)
-    const parsed: MileageRow[] = data.map((row) => ({
-      _id: nextId++,
-      time: String(row['时间'] ?? row['time'] ?? ''),
-      start: String(row['起点'] ?? row['start'] ?? '').trim(),
-      end: String(row['终点'] ?? row['end'] ?? '').trim(),
-      distance: '',
-      duration: String(row['驾驶时长'] ?? row['duration'] ?? ''),
-      avgSpeed: row['平均速度'] ?? row['avgSpeed'] ?? '',
-      maxSpeed: row['最快速度'] ?? row['maxSpeed'] ?? '',
-      _isNew: false,
-      _matched: false,
-      _autoFilled: false,
-    }))
+    if (data.length === 0) {
+      showStatus('error', 'Excel文件为空或无法解析')
+      target.value = ''
+      return
+    }
+    const parsed: MileageRow[] = []
+    for (const row of data) {
+      const start = String(getColValue(row, ['起点', 'start', '出发地'])).trim()
+      const end = String(getColValue(row, ['终点', 'end', '目的地'])).trim()
+      if (!start && !end) continue
+      const timeVal = String(getColValue(row, ['时间', 'time', '日期', '出发时间'])).trim()
+      const distRaw = getColValue(row, ['导航里程', '导航里', 'distance', '里程', '距离'])
+      const durationVal = String(getColValue(row, ['驾驶时长', '时长', 'duration', '用时'])).trim()
+      const avgRaw = getColValue(row, ['平均速度', 'avgSpeed', '均速'])
+      const maxRaw = getColValue(row, ['最快速度', 'maxSpeed', '最高速度', '极速'])
+      parsed.push({
+        _id: nextId++,
+        time: timeVal,
+        start,
+        end,
+        distance: (distRaw !== '' && distRaw !== null && distRaw !== undefined && !isNaN(Number(distRaw))) ? Number(distRaw) : '',
+        duration: durationVal,
+        avgSpeed: (avgRaw !== '' && avgRaw !== null && avgRaw !== undefined && !isNaN(Number(avgRaw))) ? Number(avgRaw) : '',
+        maxSpeed: (maxRaw !== '' && maxRaw !== null && maxRaw !== undefined && !isNaN(Number(maxRaw))) ? Number(maxRaw) : '',
+        _isNew: false,
+        _matched: false,
+        _autoFilled: false,
+      })
+    }
     let matchedCount = 0
+    let filledDistCount = 0
+    let autoStatsCount = 0
     for (const r of parsed) {
-      if (tryMatchRoute(r, true)) matchedCount++
+      const beforeDist = r.distance
+      if (findRoute(r.start, r.end)) {
+        tryMatchRoute(r, true)
+        matchedCount++
+        if (beforeDist === '' || beforeDist === 0) filledDistCount++
+        if (r.duration === '' || r.avgSpeed === '' || r.maxSpeed === '') autoStatsCount++
+      } else if (r.distance !== '' && Number(r.distance) > 0) {
+        autoFillStats(r)
+      }
     }
     tableData.value.push(...parsed)
     const unmatched = parsed.length - matchedCount
-    let msg = `成功导入 ${parsed.length} 条行程记录，匹配导航里程 ${matchedCount} 条`
-    if (unmatched > 0) msg += `，${unmatched} 条未匹配到路线（请在路线库中添加对应路线）`
+    let msg = `成功导入 ${parsed.length} 条行程记录，匹配路线库 ${matchedCount} 条`
+    if (filledDistCount > 0) msg += `（自动填充里程 ${filledDistCount} 条）`
+    if (unmatched > 0) msg += `，${unmatched} 条未匹配到路线`
     showStatus(matchedCount === parsed.length ? 'success' : 'error', msg)
-  } catch {
-    showStatus('error', '导入失败，请检查文件格式')
+  } catch (err: any) {
+    showStatus('error', '导入失败：' + (err?.message || '请检查文件格式'))
   }
   target.value = ''
 }
