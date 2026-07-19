@@ -139,11 +139,38 @@ const process = (file, w, h) => {
   return new Promise((resolve) => {
     const img = new Image()
     img.onload = () => {
+      const srcW = img.naturalWidth
+      const srcH = img.naturalHeight
+      const srcIsLandscape = srcW >= srcH
+      const tgtIsLandscape = w >= h
+      const needRotate = srcIsLandscape !== tgtIsLandscape
+
+      const effSrcW = needRotate ? srcH : srcW
+      const effSrcH = needRotate ? srcW : srcH
+
+      const scale = Math.min(w / effSrcW, h / effSrcH)
+      const drawW = effSrcW * scale
+      const drawH = effSrcH * scale
+
       const canvas = document.createElement('canvas')
       canvas.width = w
       canvas.height = h
       const ctx = canvas.getContext('2d')
-      ctx.drawImage(img, 0, 0, w, h)
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, w, h)
+
+      if (needRotate) {
+        ctx.save()
+        ctx.translate(w / 2, h / 2)
+        ctx.rotate(Math.PI / 2)
+        ctx.drawImage(img, -drawH / 2, -drawW / 2, drawH, drawW)
+        ctx.restore()
+      } else {
+        const ox = (w - drawW) / 2
+        const oy = (h - drawH) / 2
+        ctx.drawImage(img, ox, oy, drawW, drawH)
+      }
+
       canvas.toBlob(resolve, 'image/jpeg', 0.94)
     }
     img.src = URL.createObjectURL(file)

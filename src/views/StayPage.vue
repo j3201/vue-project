@@ -102,7 +102,7 @@
     <div v-if="lines.length > 0" class="panel">
       <div class="panel-head">
         <h2 class="panel-title">账单预览</h2>
-        <p class="panel-subtitle">按每张账单独立显示，打印时每页一张</p>
+        <p class="panel-subtitle">按每张账单独立显示，打印时每 2 张均分一页</p>
       </div>
       <div class="panel-body">
         <div class="bill-cards">
@@ -238,66 +238,91 @@ function recalc() {
   }
 }
 
-/* ---------- 打印：生成账单 ---------- */
+/* ---------- 打印：生成账单（每2张一页，均分页面，间隔15px） ---------- */
 function printBill() {
   if (lines.value.length === 0) return
 
-  const openTag = '<'
-  const closeTag = '</'
+  const cardHtml = (l) => `
+<div class="bill-card-print">
+  <div class="bill-title">${bill.value.hotel}</div>
+  <div class="bill-divider-print"></div>
+  <div class="bill-subtitle">账单</div>
+  <div class="bill-row"><div>客户名称：${bill.value.customer}</div><div>房号：${bill.value.roomNo}</div></div>
+  <div class="bill-row"><div>地址：${bill.value.address}</div><div>房价：${DAY_RATE} 元/天</div></div>
+  <div class="bill-row"><div>人数：${bill.value.guests}</div><div></div></div>
+  <div class="bill-row"><div>账号：${bill.value.account}</div><div>抵店时间：${l.checkIn}</div></div>
+  <div class="bill-row"><div>付款方式：${bill.value.payMethod}</div><div>离店时间：${l.checkOut}</div></div>
+  <div class="bill-sum">费用合计：${fmt(l.amount)}</div>
+  <div class="bill-row"><div>收款合计：${fmt(l.amount)}</div><div>余额：0.00</div></div>
+  <table class="bill-table-print">
+    <thead>
+      <tr><th>账项</th><th>费用金额</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>房费 ${l.checkIn} 至 ${l.checkOut}（${l.days}天）</td><td>${fmt(l.amount)}</td></tr>
+      <tr class="bill-subtotal"><td>小计</td><td>${fmt(l.amount)}</td></tr>
+    </tbody>
+  </table>
+</div>`
 
-  const cardsHtml = lines.value.map((l) => {
-    return `${openTag}div class="bill-card-print">${closeTag}div>
-  ${openTag}div class="bill-title">${bill.value.hotel}${closeTag}div>
-  ${openTag}div class="bill-divider-print">${closeTag}div>
-  ${openTag}div class="bill-subtitle">账单${closeTag}div>
-  ${openTag}div class="bill-row">${openTag}div>客户名称：${bill.value.customer}${closeTag}div>${openTag}div>房号：${bill.value.roomNo}${closeTag}div>${closeTag}div>
-  ${openTag}div class="bill-row">${openTag}div>地址：${bill.value.address}${closeTag}div>${openTag}div>房价：${DAY_RATE} 元/天${closeTag}div>${closeTag}div>
-  ${openTag}div class="bill-row">${openTag}div>人数：${bill.value.guests}${closeTag}div>${openTag}div>${closeTag}div>${closeTag}div>
-  ${openTag}div class="bill-row">${openTag}div>账号：${bill.value.account}${closeTag}div>${openTag}div>抵店时间：${l.checkIn}${closeTag}div>${closeTag}div>
-  ${openTag}div class="bill-row">${openTag}div>付款方式：${bill.value.payMethod}${closeTag}div>${openTag}div>离店时间：${l.checkOut}${closeTag}div>${closeTag}div>
-  ${openTag}div class="bill-sum">费用合计：${fmt(l.amount)}${closeTag}div>
-  ${openTag}div class="bill-row">${openTag}div>收款合计：${fmt(l.amount)}${closeTag}div>${openTag}div>余额：0.00${closeTag}div>${closeTag}div>
-  ${openTag}table class="bill-table-print">${closeTag}table>
-    ${openTag}thead>${closeTag}thead>
-      ${openTag}tr>${openTag}th>账项${closeTag}th>${openTag}th>费用金额${closeTag}th>${closeTag}tr>
-    ${openTag}tbody>${closeTag}tbody>
-      ${openTag}tr>${openTag}td>房费 ${l.checkIn} 至 ${l.checkOut}（${l.days}天）${closeTag}td>${openTag}td>${fmt(l.amount)}${closeTag}td>${closeTag}tr>
-      ${openTag}tr class="bill-subtotal">${openTag}td>小计${closeTag}td>${openTag}td>${fmt(l.amount)}${closeTag}td>${closeTag}tr>
-    ${openTag}/tbody>${closeTag}>
-  ${openTag}/table>${closeTag}>
-${openTag}/div>${closeTag}>`
-  }).join('\n')
+  const pages = []
+  for (let i = 0; i < lines.value.length; i += 2) {
+    const pair = lines.value.slice(i, i + 2)
+    const cardsHtml = pair.map(cardHtml).join('\n')
+    const spacer = pair.length === 1 ? '<div class="bill-card-spacer"></div>' : ''
+    pages.push(`<section class="page">${cardsHtml}${spacer}</section>`)
+  }
 
-  const stylesOpen = openTag + 'style>'
-  const stylesClose = closeTag + 'style>'
   const cssRules = `
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: SimSun, 'Microsoft YaHei', serif; color: #222; background: #fff; padding: 20px; }
-.bill-cards { display: flex; flex-direction: column; gap: 20px; }
-.bill-card-print { padding: 20px; border: 1px solid #e5e7eb; border-radius: 6px; page-break-inside: avoid; background: #fff; }
-.bill-title { text-align: center; font-size: 16px; font-weight: 600; margin-bottom: 4px; }
-.bill-divider-print { border-top: 2px solid #000; margin: 4px 0; }
-.bill-subtitle { text-align: center; font-size: 13px; margin: 4px 0 8px; }
-.bill-row { display: flex; justify-content: space-between; line-height: 1.8; }
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; font-family: SimSun, 'Microsoft YaHei', serif; color: #222; background: #fff; height: 100%; }
+.print-root { width: 100%; }
+.page {
+  height: calc(297mm - 30mm);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 0;
+  page-break-after: always;
+  break-after: page;
+}
+.page:last-child {
+  page-break-after: auto;
+  break-after: auto;
+}
+.bill-card-print {
+  flex: 1 1 0;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 10px 12px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+.bill-card-spacer {
+  flex: 1 1 0;
+  min-height: 0;
+}
+.bill-title { text-align: center; font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+.bill-divider-print { border-top: 2px solid #000; margin: 2px 0; }
+.bill-subtitle { text-align: center; font-size: 12px; margin: 2px 0 6px; letter-spacing: 2px; font-weight: 600; }
+.bill-row { display: flex; justify-content: space-between; line-height: 1.7; font-size: 12px; }
 .bill-row > div { flex: 1; font-size: 12px; }
-.bill-sum { text-align: center; margin: 6px 0 4px; font-size: 12px; font-weight: 600; }
-.bill-table-print { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
-.bill-table-print th, .bill-table-print td { border: 1px solid #333; padding: 4px 8px; }
+.bill-sum { text-align: center; margin: 4px 0 2px; font-size: 13px; font-weight: 700; }
+.bill-table-print { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 12px; }
+.bill-table-print th, .bill-table-print td { border: 1px solid #333; padding: 3px 6px; }
 .bill-table-print th:last-child, .bill-table-print td:last-child { text-align: right; width: 40%; }
 .bill-subtotal td { font-weight: 600; background: #f5f5f5; }
 @page { size: A4 portrait; margin: 15mm; }
 `
 
-  const bodyOpen = openTag + 'body>'
-  const bodyClose = closeTag + 'body>'
-  const htmlOpen = openTag + 'html>'
-  const htmlClose = closeTag + 'html>'
-  const headOpen = openTag + 'head>'
-  const headClose = closeTag + 'head>'
-  const metaCharset = openTag + 'meta charset="utf-8">'
-
   const w = window.open('', '_blank')
-  w.document.write(htmlOpen + headOpen + metaCharset + stylesOpen + cssRules + stylesClose + headClose + bodyOpen + '<div class="bill-cards">' + cardsHtml + '</div>' + bodyClose + htmlClose)
+  w.document.write(
+    `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${cssRules}</style></head><body><div class="print-root">${pages.join('\n')}</div></body></html>`
+  )
   w.document.close()
   w.focus()
   setTimeout(() => {

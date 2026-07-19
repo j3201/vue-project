@@ -20,6 +20,9 @@
         <router-link to="/stay" active-class="active">
           <span class="text">住宿明细</span>
         </router-link>
+        <router-link to="/mileage" active-class="active">
+          <span class="text">里程记录</span>
+        </router-link>
       </nav>
     </aside>
 

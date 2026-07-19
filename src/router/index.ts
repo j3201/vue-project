@@ -4,6 +4,7 @@ import PdfPage from '../views/PdfPage.vue'
 import NavPage from '../views/NavPage.vue'
 import RandomPage from '../views/RandomPage.vue'
 import StayPage from '../views/StayPage.vue'
+import MileagePage from '../views/MileagePage.vue'
 
 const routes = [
   { path: '/', redirect: '/image' },
@@ -11,7 +12,8 @@ const routes = [
   { path: '/pdf', component: PdfPage },
   { path: '/nav', component: NavPage },
   { path: '/random', component: RandomPage },
-  { path: '/stay', component: StayPage }
+  { path: '/stay', component: StayPage },
+  { path: '/mileage', component: MileagePage }
 ]
 
 const router = createRouter({
