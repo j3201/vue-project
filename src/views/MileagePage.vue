@@ -129,6 +129,10 @@
         </div>
       </div>
       <div class="control-right">
+        <button v-if="tableData.length > 0" class="btn btn-nav-gen" @click="goToNavPage">
+          <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/></svg>
+          生成导航图
+        </button>
         <button v-if="tableData.length > 0" class="btn btn-ghost btn-sm" @click="rematchAll" title="根据路线库重新计算所有行程的导航里程">
           <svg viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>
           重新匹配里程
@@ -251,7 +255,41 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import * as XLSX from 'xlsx'
+
+const router = useRouter()
+
+const NAV_DATA_KEY = 'mileage_nav_cards'
+
+const excelTimeToStr = (value: any): string => {
+  if (value === '' || value === null || value === undefined) return ''
+  if (typeof value === 'string') {
+    const s = value.trim()
+    if (!s) return ''
+    if (/^\d{1,2}:\d{2}:\d{2}$/.test(s) || /^\d{1,2}:\d{2}$/.test(s)) return s
+    const n = Number(s)
+    if (!isNaN(n) && n > 0 && n < 2) {
+      const totalSeconds = Math.round(n * 24 * 60 * 60)
+      const h = Math.floor(totalSeconds / 3600)
+      const m = Math.floor((totalSeconds % 3600) / 60)
+      const sec = totalSeconds % 60
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+    }
+    return s
+  }
+  if (typeof value === 'number') {
+    if (value > 0 && value < 2) {
+      const totalSeconds = Math.round(value * 24 * 60 * 60)
+      const h = Math.floor(totalSeconds / 3600)
+      const m = Math.floor((totalSeconds % 3600) / 60)
+      const sec = totalSeconds % 60
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+    }
+    return String(value)
+  }
+  return String(value)
+}
 
 interface RouteEntry {
   start: string
@@ -672,7 +710,7 @@ const handleTripImport = async (e: Event) => {
       if (!start && !end) continue
       const timeVal = String(getColValue(row, ['时间', 'time', '日期', '出发时间'])).trim()
       const distRaw = getColValue(row, ['导航里程', '导航里', 'distance', '里程', '距离'])
-      const durationVal = String(getColValue(row, ['驾驶时长', '时长', 'duration', '用时'])).trim()
+      const durationVal = excelTimeToStr(getColValue(row, ['驾驶时长', '时长', 'duration', '用时']))
       const avgRaw = getColValue(row, ['平均速度', 'avgSpeed', '均速'])
       const maxRaw = getColValue(row, ['最快速度', 'maxSpeed', '最高速度', '极速'])
       parsed.push({
@@ -738,6 +776,30 @@ const saveAllToCache = () => {
   } catch {
     showStatus('error', '缓存失败')
   }
+}
+
+const goToNavPage = () => {
+  if (tableData.value.length === 0) {
+    showStatus('error', '暂无行程数据，请先导入或添加行程记录')
+    return
+  }
+  const cards = tableData.value
+    .filter(r => r.start && r.end)
+    .map(r => ({
+      time: r.time || '',
+      start: r.start,
+      end: r.end,
+      distance: r.distance || '0',
+      duration: r.duration || '',
+      avgSpeed: r.avgSpeed || '0',
+      maxSpeed: r.maxSpeed || '0',
+    }))
+  if (cards.length === 0) {
+    showStatus('error', '没有有效的行程记录（需包含起点和终点）')
+    return
+  }
+  localStorage.setItem(NAV_DATA_KEY, JSON.stringify(cards))
+  router.push('/nav')
 }
 
 const loadFromCache = () => {
@@ -953,6 +1015,8 @@ onMounted(() => {
 .btn-danger-ghost:hover { background: rgba(248, 113, 113, 0.1); border-color: var(--red); }
 .btn-danger-outline { background: transparent; color: var(--red); border-color: rgba(248, 113, 113, 0.5); }
 .btn-danger-outline:hover { background: rgba(248, 113, 113, 0.12); border-color: var(--red); box-shadow: 0 0 12px rgba(239, 68, 68, 0.2); transform: translateY(-1px); }
+.btn-nav-gen { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; border: none; box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3); }
+.btn-nav-gen:hover { background: linear-gradient(135deg, #2563eb, #1d4ed8); box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4); transform: translateY(-1px); }
 .reset-group { display: flex; gap: 8px; margin-left: auto; }
 .btn-cache {
   background: linear-gradient(135deg, var(--accent), #d97706);

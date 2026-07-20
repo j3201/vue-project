@@ -13,6 +13,7 @@
           极简风格
         </button>
       </div>
+      <div v-if="fromMileageTip" class="sync-tip">{{ fromMileageTip }}</div>
     </div>
 
     <!-- 卡片列表 -->
@@ -70,38 +71,84 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import * as XLSX from 'xlsx'
 import html2canvas from 'html2canvas'
 import { Document, Packer, PageBreak, ImageRun, Paragraph, VerticalAlign, TextRun } from 'docx'
 import { saveAs } from 'file-saver'
 
-const cardList = ref([])
+const NAV_DATA_KEY = 'mileage_nav_cards'
+
+interface NavCard {
+  time: string
+  start: string
+  end: string
+  distance: string | number
+  duration: string | number
+  avgSpeed: string | number
+  maxSpeed: string | number
+}
+
+const cardList = ref<NavCard[]>([])
 const currentStyle = ref(0)
+const fromMileageTip = ref('')
 
 const cardStyles = {
   0: 'card-style-0',
   1: 'card-style-1',
 }
 
-// 核心：将 Excel 小数时间（0.5425）转为 HH:mm:ss 格式
+// 将值转为 HH:mm:ss 显示格式：处理Excel小数、已格式化字符串、纯数字秒数
 const formatExcelTime = (value: string | number | null | undefined) => {
-  if (isNaN(value) || value === '' || value === null || value === undefined) {
-    return value
+  if (value === '' || value === null || value === undefined) return '--:--:--'
+  if (typeof value === 'string') {
+    const s = value.trim()
+    if (!s) return '--:--:--'
+    if (/^\d{1,2}:\d{2}:\d{2}$/.test(s)) return s
+    if (/^\d{1,2}:\d{2}$/.test(s)) return s + ':00'
+    const n = Number(s)
+    if (!isNaN(n)) {
+      if (n > 0 && n < 2) {
+        const totalSeconds = Math.round(n * 24 * 60 * 60)
+        const h = Math.floor(totalSeconds / 3600)
+        const m = Math.floor((totalSeconds % 3600) / 60)
+        const sec = totalSeconds % 60
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+      }
+      return String(n)
+    }
+    return s
   }
-  const dayFraction = parseFloat(value)
-  const totalSeconds = Math.round(dayFraction * 24 * 60 * 60)
-
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-
-  const h = String(hours).padStart(2, '0')
-  const m = String(minutes).padStart(2, '0')
-  const s = String(seconds).padStart(2, '0')
-
-  return `${h}:${m}:${s}`
+  if (typeof value === 'number') {
+    if (isNaN(value)) return '--:--:--'
+    if (value > 0 && value < 2) {
+      const totalSeconds = Math.round(value * 24 * 60 * 60)
+      const h = Math.floor(totalSeconds / 3600)
+      const m = Math.floor((totalSeconds % 3600) / 60)
+      const sec = totalSeconds % 60
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+    }
+    return String(value)
+  }
+  return String(value)
 }
+
+onMounted(() => {
+  try {
+    const raw = localStorage.getItem(NAV_DATA_KEY)
+    if (raw) {
+      const data = JSON.parse(raw)
+      if (Array.isArray(data) && data.length > 0) {
+        cardList.value = data
+        fromMileageTip.value = `已从里程记录同步 ${data.length} 条行程数据`
+        localStorage.removeItem(NAV_DATA_KEY)
+        setTimeout(() => { fromMileageTip.value = '' }, 5000)
+      }
+    }
+  } catch (e) {
+    console.error('读取导航数据失败:', e)
+  }
+})
 
 // 从时间字符串中提取日期（例如："2024/5/26 14:30" -> "5月26号"）
 const extractDate = (timeStr: string): string => {
@@ -130,29 +177,73 @@ const extractDate = (timeStr: string): string => {
 }
 
 // 上传Excel并解析
+const getColValue = (row: any, keys: string[]) => {
+  for (const k of keys) {
+    if (row[k] !== undefined && row[k] !== null && row[k] !== '') return row[k]
+  }
+  for (const key of Object.keys(row)) {
+    const lower = key.toLowerCase().trim()
+    for (const k of keys) {
+      if (lower === k.toLowerCase() || lower.includes(k.toLowerCase())) {
+        return row[key]
+      }
+    }
+  }
+  return ''
+}
+
+const formatTimeToHMS = (value: any): string => {
+  if (value === '' || value === null || value === undefined) return ''
+  if (typeof value === 'string') {
+    const s = value.trim()
+    if (!s) return ''
+    if (/^\d{1,2}:\d{2}:\d{2}$/.test(s)) return s
+    if (/^\d{1,2}:\d{2}$/.test(s)) return s + ':00'
+    const n = Number(s)
+    if (!isNaN(n) && n > 0 && n < 2) {
+      const totalSeconds = Math.round(n * 24 * 60 * 60)
+      const h = Math.floor(totalSeconds / 3600)
+      const m = Math.floor((totalSeconds % 3600) / 60)
+      const sec = totalSeconds % 60
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+    }
+    return s
+  }
+  if (typeof value === 'number') {
+    if (value > 0 && value < 2) {
+      const totalSeconds = Math.round(value * 24 * 60 * 60)
+      const h = Math.floor(totalSeconds / 3600)
+      const m = Math.floor((totalSeconds % 3600) / 60)
+      const sec = totalSeconds % 60
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+    }
+    return String(value)
+  }
+  return String(value)
+}
+
 const handleUpload = (e: { target: { files: any[] } }) => {
   const file = e.target.files[0]
   if (!file) return
   const reader = new FileReader()
   reader.onload = (ev) => {
     const wb = XLSX.read(ev.target.result, {
-      type: 'binary',
-      cellText: true,
+      type: 'array',
       cellDates: false,
     })
     const ws = wb.Sheets[wb.SheetNames[0]]
-    const data = XLSX.utils.sheet_to_json(ws)
-    cardList.value = data.map((row) => ({
-      time: row['时间'] || '',
-      start: row['起点'] || '',
-      end: row['终点'] || '',
-      distance: row['导航里程'] || '0',
-      duration: row['驾驶时长'] || '',
-      avgSpeed: row['平均速度'] || '0',
-      maxSpeed: row['最快速度'] || '0',
-    }))
+    const data = XLSX.utils.sheet_to_json(ws, { defval: '' })
+    cardList.value = data.map((row: any) => ({
+      time: String(getColValue(row, ['时间', 'time', '日期', '出发时间'])).trim(),
+      start: String(getColValue(row, ['起点', 'start', '出发地'])).trim(),
+      end: String(getColValue(row, ['终点', 'end', '目的地'])).trim(),
+      distance: getColValue(row, ['导航里程', '导航里', 'distance', '里程', '距离']) || '0',
+      duration: formatTimeToHMS(getColValue(row, ['驾驶时长', '时长', 'duration', '用时'])),
+      avgSpeed: getColValue(row, ['平均速度', 'avgSpeed', '均速']) || '0',
+      maxSpeed: getColValue(row, ['最快速度', 'maxSpeed', '最高速度', '极速']) || '0',
+    })).filter((c: NavCard) => c.start || c.end)
   }
-  reader.readAsBinaryString(file)
+  reader.readAsArrayBuffer(file)
 }
 
 // 导出文档（生成 Word 文档）
@@ -469,6 +560,24 @@ const exportDocument = async () => {
   color: #ffffff;
 }
 
+.sync-tip {
+  margin-top: 12px;
+  padding: 8px 14px;
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  border-radius: 6px;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  animation: fadeInDown 0.3s ease;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* 卡片容器（仅改容器，不改内部卡片样式） */
 .card-list {
   max-width: 760px;
@@ -556,7 +665,7 @@ const exportDocument = async () => {
 }
 
 .time-text {
-  font-size: 26px;
+  font-size: 25px;
   color: #99a3b4;
   margin-left: -15px;
 }
@@ -682,7 +791,7 @@ const exportDocument = async () => {
 }
 
 .label {
-  font-size: 18px;
+  font-size: 20px;
   color: #99a3b4;
   margin-top: 0;
   font-weight: 400;
