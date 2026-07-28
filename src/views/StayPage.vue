@@ -93,7 +93,8 @@
           </div>
         </div>
         <div class="bill-footer">
-          <button class="btn btn-primary" @click="printBill">打印 / 导出 PDF</button>
+          <button class="btn btn-primary" @click="doPrint">打印</button>
+          <button class="btn btn-secondary" @click="exportPdf">导出 PDF</button>
         </div>
       </div>
     </div>
@@ -239,7 +240,7 @@ function recalc() {
 }
 
 /* ---------- 打印：生成账单（每2张一页，均分页面，间隔15px） ---------- */
-function printBill() {
+function doPrint() {
   if (lines.value.length === 0) return
 
   const cardHtml = (l) => `
@@ -328,6 +329,54 @@ html, body { margin: 0; padding: 0; font-family: SimSun, 'Microsoft YaHei', seri
   setTimeout(() => {
     try { w.print() } catch (e) {}
   }, 300)
+}
+
+/* ---------- 导出 PDF ---------- */
+async function exportPdf() {
+  if (lines.value.length === 0) return
+  
+  const { default: html2canvas } = await import('html2canvas')
+  const { jsPDF } = await import('jspdf')
+  
+  const cards = document.querySelectorAll('.bill-card-print')
+  const doc = new jsPDF('p', 'mm', 'a4')
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 15
+  const contentWidth = pageWidth - margin * 2
+  
+  for (let i = 0; i < cards.length; i += 2) {
+    if (i > 0) doc.addPage()
+    
+    const card1 = cards[i]
+    const card2 = cards[i + 1]
+    
+    const canvas1 = await html2canvas(card1, { scale: 2, useCORS: true })
+    const imgData1 = canvas1.toDataURL('image/png')
+    
+    const card1Width = canvas1.width
+    const card1Height = canvas1.height
+    const scale1 = contentWidth / card1Width
+    const printHeight1 = card1Height * scale1
+    
+    doc.addImage(imgData1, 'PNG', margin, margin, contentWidth, printHeight1)
+    
+    if (card2) {
+      const canvas2 = await html2canvas(card2, { scale: 2, useCORS: true })
+      const imgData2 = canvas2.toDataURL('image/png')
+      
+      const card2Width = canvas2.width
+      const card2Height = canvas2.height
+      const scale2 = contentWidth / card2Width
+      const printHeight2 = card2Height * scale2
+      
+      const gap = (pageHeight - margin * 2 - printHeight1 - printHeight2) / 3
+      doc.addImage(imgData2, 'PNG', margin, margin + printHeight1 + gap, contentWidth, printHeight2)
+    }
+  }
+  
+  const dateStr = new Date().toISOString().slice(0, 10)
+  doc.save(`住宿账单_${dateStr}.pdf`)
 }
 </script>
 
@@ -628,6 +677,7 @@ textarea:focus {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+  gap: 12px;
 }
 
 /* 账单预览卡片 */
